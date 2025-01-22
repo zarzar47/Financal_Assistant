@@ -12,18 +12,50 @@ class Transactionslist extends StatefulWidget {
 }
 
 class TransactionsListState extends State<Transactionslist> {
+  final ScrollController _scrollController = ScrollController();
+  final Database _database = Database();
+
+  @override
+  void initState() {
+    super.initState();
+    _database.fetchTransactionsFromFirestore(); // Initial data fetch
+
+    // Listen for scroll events
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        // Load more data when scrolled to the bottom
+        _database.fetchTransactionsFromFirestore(loadMore: true);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final transactions =
-        Provider.of<Database>(context).transactions.reversed.toList();
-
-    return SizedBox(
-      width: 300,
-      child: ListView(
-        reverse: false,
-        children: transactions.map((value) {
-          return TransactionItem(value: value);
-        }).toList(),
+    return Scaffold(
+      body: Container(
+        padding: EdgeInsets.all(20),
+        child: Consumer<Database>(
+          builder: (context, db, child) {
+            return ListView.builder(
+              controller: _scrollController,
+              itemCount: db.transactions.length + 1, // Extra item for loading indicator
+              itemBuilder: (context, index) {
+                if (index < db.transactions.length) {
+                  final transaction = db.transactions[index];
+                  return TransactionItem(
+                    value: transaction
+                  );
+                } else {
+                  // Show a loading indicator at the bottom
+                  return db.transactions.isNotEmpty && _database.hasMoreData
+                      ? Center(child: CircularProgressIndicator())
+                      : SizedBox();
+                }
+              },
+            );
+          },
+        ),
       ),
     );
   }

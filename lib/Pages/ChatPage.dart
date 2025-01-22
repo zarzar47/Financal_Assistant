@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class Chatpage extends StatefulWidget {
   const Chatpage({super.key});
@@ -26,14 +27,29 @@ class _ChatpageState extends State<Chatpage> {
       _controller.clear(); // Clear the input field
     });
 
-    // Simulate AI response (you can replace this with actual AI interaction)
-    var url = Uri.http('192.168.18.190:5000', '/ChatPrompt'); // Corrected Uri
-    var response = await http.post(url, body: {'message': userMessage});
-    String aiResponse = "AI: Response to '${response.body}'";
+    try {
+      // Simulate AI response (you can replace this with actual AI interaction)
+      var url = Uri.parse('http://192.168.18.216:5000/ChatPrompt');
 
-    setState(() {
-      messages.add({'sender': 'AI', 'message': aiResponse});
-    });
+      var response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'}, // Set the header
+        body: jsonEncode({'message': userMessage}), // Encode the body as JSON
+      );
+      if (response.statusCode == 200) {
+        Map<String, dynamic> parsedResponse = jsonDecode(response.body);
+        String aiResponse = parsedResponse['body'];
+
+        setState(() {
+          // Add AI response to the chat
+          messages.add({'sender': 'AI', 'message': aiResponse});
+        });
+      } else {
+        print('Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error sending request: $e');
+    }
   }
 
   @override

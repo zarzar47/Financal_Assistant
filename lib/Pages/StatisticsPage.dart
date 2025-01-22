@@ -1,6 +1,4 @@
 import 'dart:math';
-import 'StatisticalWidgets/PieChart.dart';
-import 'StatisticalWidgets/lineCart.dart';
 import 'package:flutter/material.dart';
 import 'package:finance_app/backend_API.dart';
 import 'package:provider/provider.dart';
@@ -14,36 +12,14 @@ class Statisticspage extends StatelessWidget {
       appBar: AppBar(
         title: const Center(child: Text('Statistics Page')),
       ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 300, // Define height for the Pie Chart
-                child: CategoryPieChart(
-                  Provider.of<Database>(context, listen: false)
-                      .calculateCategoryTotals(),
-                ),
-              ),
-              SizedBox(
-                height: 300, // Define height for the Line Graph
-                child: CumulativeLineGraph(
-                  Provider.of<Database>(context, listen: false).transactions,
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text("Too much money on food!!!"),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: const Column(children: [
+        Text("What to do"),
+      ],)
     );
   }
 
   Future<void> addRandomTransactions(BuildContext context, count) async {
-    final _random = Random();
+    final random = Random();
 
     // Define sample data for randomization
     final List<String> categories = [
@@ -88,16 +64,16 @@ class Statisticspage extends StatelessWidget {
 
     for (int i = 0; i < count; i++) {
       // Generate random data
-      String category = categories[_random.nextInt(categories.length)];
-      String subcategory = subcategories[_random.nextInt(subcategories.length)];
-      String location = locations[_random.nextInt(locations.length)];
-      String description = descriptions[_random.nextInt(descriptions.length)];
+      String category = categories[random.nextInt(categories.length)];
+      String subcategory = subcategories[random.nextInt(subcategories.length)];
+      String location = locations[random.nextInt(locations.length)];
+      String description = descriptions[random.nextInt(descriptions.length)];
       String picture = 'None'; // Placeholder for picture field
       int price =
-          (100 + _random.nextInt(5000)); // Random price between 100 and 5100
+          (100 + random.nextInt(5000)); // Random price between 100 and 5100
 
       // Generate a random date within the last 30 days
-      DateTime randomDate = today.subtract(Duration(days: _random.nextInt(30)));
+      DateTime randomDate = today.subtract(Duration(days: random.nextInt(30)));
       String date = '${randomDate.day}-${randomDate.month}-${randomDate.year}';
 
       // Create a transaction map

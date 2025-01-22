@@ -15,75 +15,13 @@ class Categories {
     "Debt Repayments",
     "Insurance",
   ];
-
-  static Map<String, List<String>> subCategoryLists = {
-    "Food": ["Groceries", "Restaurants", "Snacks", "Takeout", "Coffee"],
-    "Transportation": [
-      "Public Transport",
-      "Fuel",
-      "Ride-hailing",
-      "Parking",
-      "Maintenance",
-      "Tickets"
-    ],
-    "Utilities": ["Electricity", "Gas", "Water", "Internet", "Phone"],
-    "Housing": ["Rent", "Mortgage", "Tax"],
-    "Entertainment": ["Movies", "Events", "Gaming", "Subscriptions"],
-    "Education": ["Tuition", "Books", "Courses"],
-    "Shopping": ["Clothing", "Electronics", "Household", "Gifts"],
-    "Personal Care": [
-      "Gym",
-      "Doctor",
-      "Medication",
-      "Therapy",
-      "Salons",
-      "Skincare"
-    ],
-    "Savings": ["Emergency Fund", "Investments"],
-    "Debt Repayments": ["Credit Cards", "Loans"],
-    "Insurance": ["Health", "Auto"]
-  };
 }
 
 class Database extends ChangeNotifier {
-  static final List<TransactionInfo> _transactions = [
-    const TransactionInfo(
-        transactionID: "0",
-        price: 100,
-        category: "Food",
-        subCategory: "Takeout",
-        date: "24-11-2024",
-        description: "KFC",
-        location: "Home",
-        picture: "None"),
-    const TransactionInfo(
-        transactionID: "1",
-        price: 101,
-        category: "Food",
-        subCategory: "Takeout",
-        date: "24-11-2024",
-        description: "KFC",
-        location: "Home",
-        picture: "None"),
-    const TransactionInfo(
-        transactionID: "2",
-        price: 102,
-        category: "Food",
-        subCategory: "Takeout",
-        date: "24-11-2024",
-        description: "KFC",
-        location: "Home",
-        picture: "None"),
-    const TransactionInfo(
-        transactionID: "3",
-        price: 103,
-        category: "Food",
-        subCategory: "Takeout",
-        date: "24-11-2024",
-        description: "KFC",
-        location: "Home",
-        picture: "None")
-  ];
+  static final List<TransactionInfo> _transactions = [];
+  DocumentSnapshot? _lastDocument; // Tracks the last document retrieved
+  bool _hasMoreData = true; // Tracks if more data is available
+  static const int _pageSize = 6; // Number of items to fetch per page
 
   static final Database _instance = Database._internal();
 
@@ -93,6 +31,7 @@ class Database extends ChangeNotifier {
 
   Database._internal();
 
+  bool get hasMoreData => _hasMoreData;
   List<TransactionInfo> get transactions => _transactions;
 
   void addTransaction(Map<String, dynamic> data) {
@@ -132,32 +71,44 @@ class Database extends ChangeNotifier {
         onError: (e) => print("Error updating document $e"));
   }
 
-  // Fetch transactions from Firestore
-  Future<void> fetchTransactionsFromFirestore() async {
+  Future<void> fetchTransactionsFromFirestore({bool loadMore = false}) async {
     try {
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('Transactions')
-          .orderBy("Date")
-          .get();
+      // If no more data to load, exit early
+      if (!_hasMoreData && loadMore) return;
 
-      // Clear the local list and repopulate
-      if (snapshot.docs.isNotEmpty) {
-        _transactions.clear();
+      Query query = FirebaseFirestore.instance
+          .collection('Transactions')
+          .orderBy("Date", descending: true)
+          .limit(_pageSize);
+
+      // If loading more data, start after the last document
+      if (loadMore && _lastDocument != null) {
+        query = query.startAfterDocument(_lastDocument!);
       }
 
+      final QuerySnapshot snapshot = await query.get();
+
+      // Update the last document and check if there's more data
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      if (snapshot.docs.length < _pageSize) {
+        _hasMoreData = false; // No more data to fetch
+      }
+
+      // Parse and add transactions
       for (var doc in snapshot.docs) {
-        // print(doc.toString());
         final data = doc.data() as Map<String, dynamic>;
-        // Convert the Firestore data into info for display
         _transactions.add(TransactionInfo(
-            transactionID: doc.id,
-            price: data['Price'],
-            category: data['Category'],
-            subCategory: data['Subcategory'] ?? 'Not selected',
-            date: data['Date'],
-            description: data['Description'],
-            location: data['Location'],
-            picture: data['Picture']));
+          transactionID: doc.id,
+          price: data['Price'],
+          category: data['Category'],
+          subCategory: data['Subcategory'] ?? 'Not selected',
+          date: data['Date'],
+          description: data['Description'],
+          location: data['Location'],
+          picture: data['Picture'],
+        ));
       }
 
       notifyListeners();
@@ -180,6 +131,13 @@ class Database extends ChangeNotifier {
       }
     }
     return totals;
+  }
+
+  void resetPagination() {
+    // Resets pagination state for refreshing data
+    _lastDocument = null;
+    _hasMoreData = true;
+    _transactions.clear();
   }
 
   Future<bool> deleteTransaction(String transactionID) async {
